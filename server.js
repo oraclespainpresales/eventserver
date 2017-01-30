@@ -41,7 +41,7 @@ process.on('SIGINT', function() {
 // Main handlers registration - END
 
 const WSPORT = 10000;
-const RESTPORT = 9000;
+const RESTPORT = 10001;
 
 // REST engine initial setup
 restapp.use(bodyParser.urlencoded({ extended: true }));
