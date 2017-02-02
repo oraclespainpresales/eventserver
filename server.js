@@ -55,11 +55,11 @@ const namespace = 'msg';
 
 io.on('connection', function (socket) {
   s = socket;
-  log.info("","Connected!!");
+  log.verbose("","Connected!!");
   socket.conn.on('heartbeat', function() {
-    log.info("",'heartbeat');
+    log.verbose("",'heartbeat');
   });
-
+/**
   socket.on('msg', function (data, callback) {
     log.info("","Message received: " + data);
     socket.emit(namespace, "Hi, " + data, function(msg) {
@@ -68,17 +68,17 @@ io.on('connection', function (socket) {
 		});
     callback('ack from server');
   });
-
+**/
   socket.on('disconnect', function () {
-    log.info("","Socket disconnected");
+    log.verbose("","Socket disconnected");
   });
 
   socket.on('error', function (err) {
-    log.info("","Error: " + err);
+    log.error("","Error: " + err);
   });
 
   socket.on('pong', function (beat) {
-    log.info("","Pong: " + beat);
+    log.verbose("","Pong: " + beat);
   });
 });
 
