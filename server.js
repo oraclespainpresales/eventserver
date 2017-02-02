@@ -17,6 +17,7 @@ var wsapp       = express()
 //  , router  = express.Router()
   , wsserver    = http.createServer(wsapp)
   , restserver  = http.createServer(restapp)
+//  , io          = require('socket.io')(wsserver, {'pingInterval': 1000, 'pingTimeout': 2000})
   , io          = require('socket.io')(wsserver)
 ;
 
@@ -51,24 +52,13 @@ restapp.use(bodyParser.json());
 // WEBSOCKET stuff - BEGIN
 
 var s = undefined;
-const namespace = 'msg';
 
 io.on('connection', function (socket) {
   s = socket;
-  log.verbose("","Connected!!");
+  log.info("","Connected!!");
   socket.conn.on('heartbeat', function() {
     log.verbose("",'heartbeat');
   });
-/**
-  socket.on('msg', function (data, callback) {
-    log.info("","Message received: " + data);
-    socket.emit(namespace, "Hi, " + data, function(msg) {
-      // Callback invoked when delivered
-			log.info("","ACK: " + msg);
-		});
-    callback('ack from server');
-  });
-**/
   socket.on('disconnect', function () {
     log.verbose("","Socket disconnected");
   });
@@ -91,8 +81,7 @@ restapp.post(restURI, function(req,res) {
   if (req.params.eventname) {
     // find out the demozone
     var demozone = req.body[0].payload.data.data_demozone.toLowerCase();
-//    var namespace = demozone + "," + req.params.eventname;
-    var namespace = req.params.eventname;
+    var namespace = demozone + "," + req.params.eventname;
     log.verbose("","Sending to %s", namespace);
     io.sockets.emit(namespace, req.body);
   }
