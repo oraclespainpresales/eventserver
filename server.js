@@ -24,6 +24,7 @@ var wsapp       = express()
 // Main code STARTS HERE !!
 // ************************************************************************
 
+log.severity  = 'info';
 log.timestamp = true;
 
 // Main handlers registration - BEGIN
@@ -86,10 +87,11 @@ io.on('connection', function (socket) {
 
 restapp.post(restURI, function(req,res) {
   res.status(204).send();
-  log.info("","request: " + JSON.stringify(req.body));
+  log.verbose("","request: " + JSON.stringify(req.body));
   if (req.params.eventname) {
-    log.info("","Param: " + req.params.eventname);
-    io.sockets.emit(req.params.eventname, req.body);
+    // find out the demozone
+    var demozone = req.body[0].payload.data.data_demozone.toLowerCase();
+    io.sockets.emit(demozone + "," + req.params.eventname, req.body);
   }
 });
 
