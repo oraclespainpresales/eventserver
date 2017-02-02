@@ -91,7 +91,8 @@ restapp.post(restURI, function(req,res) {
   if (req.params.eventname) {
     // find out the demozone
     var demozone = req.body[0].payload.data.data_demozone.toLowerCase();
-    var namespace = demozone + "," + req.params.eventname;
+//    var namespace = demozone + "," + req.params.eventname;
+    var namespace = req.params.eventname;
     log.verbose("","Sending to %s", namespace);
     io.sockets.emit(namespace, req.body);
   }
