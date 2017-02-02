@@ -17,7 +17,7 @@ var wsapp       = express()
 //  , router  = express.Router()
   , wsserver    = http.createServer(wsapp)
   , restserver  = http.createServer(restapp)
-//  , io          = require('socket.io')(wsserver, {'pingInterval': 1000, 'pingTimeout': 2000})
+//  , io          = require('socket.io')(wsserver, {'pingInterval': 2000, 'pingTimeout': 4000})
   , io          = require('socket.io')(wsserver)
 ;
 
