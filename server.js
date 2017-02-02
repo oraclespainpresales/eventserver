@@ -24,7 +24,7 @@ var wsapp       = express()
 // Main code STARTS HERE !!
 // ************************************************************************
 
-log.severity  = 'verbose';
+log.level     = 'verbose';
 log.timestamp = true;
 
 // Main handlers registration - BEGIN
