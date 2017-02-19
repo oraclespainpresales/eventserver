@@ -204,7 +204,8 @@ restapp.post(restURI, function(req,res) {
     }
     var server = _.find(servers, { 'demozone': demozone });
     if (server) {
-      var namespace = demozone.toLowerCase() + "," + req.params.eventname;
+//      var namespace = demozone.toLowerCase() + "," + req.params.eventname;
+      var namespace = req.params.eventname;
       log.verbose("","Sending to %s (%d)", namespace, server.port);
       server.io.sockets.emit(namespace, req.body);
     } else {
