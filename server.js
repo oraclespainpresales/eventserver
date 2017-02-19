@@ -1,31 +1,29 @@
 'use strict';
 
 // Module imports
-var express = require('express')
-  , restify = require('restify')
+var restify = require('restify')
+  , queue = require('block-queue')
+  , express = require('express')
   , http = require('http')
   , bodyParser = require('body-parser')
+  , async = require('async')
+  , _ = require('lodash')
   , log = require('npmlog-ts')
-  , util = require('util')
+  , commandLineArgs = require('command-line-args')
+  , getUsage = require('command-line-usage')
 ;
 
 // Instantiate classes & servers
 const wsURI     = '/socket.io'
     , restURI   = '/event/:eventname';
-var wsapp       = express()
-  , restapp     = express()
-//  , router  = express.Router()
-  , wsserver    = http.createServer(wsapp)
+var restapp     = express()
   , restserver  = http.createServer(restapp)
-//  , io          = require('socket.io')(wsserver, {'pingInterval': 2000, 'pingTimeout': 4000})
-  , io          = require('socket.io')(wsserver)
 ;
 
 // ************************************************************************
 // Main code STARTS HERE !!
 // ************************************************************************
 
-log.level     = 'verbose';
 log.timestamp = true;
 
 // Main handlers registration - BEGIN
@@ -42,55 +40,175 @@ process.on('SIGINT', function() {
 });
 // Main handlers registration - END
 
-const WSPORT = 10000;
-const RESTPORT = 10001;
+// Initialize input arguments
+const optionDefinitions = [
+  { name: 'dbhost', alias: 'd', type: String },
+  { name: 'pinginterval', alias: 'i', type: Number },
+  { name: 'pingtimeout', alias: 't', type: Number },
+  { name: 'help', alias: 'h', type: Boolean },
+  { name: 'verbose', alias: 'v', type: Boolean, defaultOption: false }
+];
+
+const sections = [
+  {
+    header: 'IoT Racing - Event Server',
+    content: 'Event Server for IoT Racing events'
+  },
+  {
+    header: 'Options',
+    optionList: [
+      {
+        name: 'dbhost',
+        typeLabel: '[underline]{ipaddress:port}',
+        alias: 'd',
+        type: String,
+        description: 'DB setup server IP address/hostname and port'
+      },
+      {
+        name: 'pinginterval',
+        typeLabel: '[underline]{milliseconds}',
+        alias: 'i',
+        type: Number,
+        description: 'Ping interval in milliseconds for event clients'
+      },
+      {
+        name: 'pingtimeout',
+        typeLabel: '[underline]{milliseconds}',
+        alias: 't',
+        type: Number,
+        description: 'Ping timeout in milliseconds for event clients'
+      },
+      {
+        name: 'verbose',
+        alias: 'v',
+        description: 'Enable verbose logging.'
+      },
+      {
+        name: 'help',
+        alias: 'h',
+        description: 'Print this usage guide.'
+      }
+    ]
+  }
+]
+var options = undefined;
+
+try {
+  options = commandLineArgs(optionDefinitions);
+} catch (e) {
+  console.log(getUsage(sections));
+  console.log(e.message);
+  process.exit(-1);
+}
+
+if (!options.dbhost) {
+  console.log(getUsage(sections));
+  process.exit(-1);
+}
+
+if (options.help) {
+  console.log(getUsage(sections));
+  process.exit(0);
+}
+
+log.level = (options.verbose) ? 'verbose' : 'info';
+
+const pingInterval = options.pinginterval || 25000
+    , pingTimeout  = options.pingtimeout  || 60000
+    , RESTPORT = 10001
+    , URI = '/apex/pdb1/anki/demozone/zone/'
+;
 
 // REST engine initial setup
 restapp.use(bodyParser.urlencoded({ extended: true }));
 restapp.use(bodyParser.json());
 
-// WEBSOCKET stuff - BEGIN
-
-var s = undefined;
-
-io.on('connection', function (socket) {
-  s = socket;
-  log.info("","Connected!!");
-  socket.conn.on('heartbeat', function() {
-    log.verbose("",'heartbeat');
-  });
-  socket.on('disconnect', function () {
-    log.verbose("","Socket disconnected");
-  });
-
-  socket.on('error', function (err) {
-    log.error("","Error: " + err);
-  });
-
-  socket.on('pong', function (beat) {
-    log.verbose("","Pong: " + beat);
-  });
+var client = restify.createJsonClient({
+  url: 'https://' + options.dbhost,
+  rejectUnauthorized: false,
+  headers: {
+    "content-type": "application/json"
+  }
 });
 
-// WEBSOCKET stuff - END
-//app.use('/api', router);
+var demozones = _.noop();
+var servers = [];
+
+async.series([
+    function(next) {
+      client.get(URI, function(err, req, res, obj) {
+        var jBody = JSON.parse(res.body);
+        if (err) {
+          next(err.message);
+        } else if (!jBody.items || jBody.items.length == 0) {
+          next("No demozones found. Aborting.");
+        } else {
+          demozones = jBody.items;
+          next(null);
+        }
+      });
+    },
+    function(next) {
+      async.eachSeries(demozones, (demozone,callback) => {
+        var d = {
+          demozone: demozone.id,
+          name: demozone.name,
+          port: (demozone.proxyport % 100) + 10000
+        };
+        d.app = express();
+        d.server = http.createServer(d.app);
+        d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
+        d.io.on('connection', function (socket) {
+          log.info(d.name,"Connected!!");
+          socket.conn.on('heartbeat', function() {
+            log.verbose(d.name,'heartbeat');
+          });
+          socket.on('disconnect', function () {
+            log.info(d.name,"Socket disconnected");
+          });
+          socket.on('error', function (err) {
+            log.error(d.name,"Error: " + err);
+          });
+        });
+        d.server.listen(d.port, function() {
+          log.info("","Created WS server for demozone '" + d.name + "' at port: " + d.port);
+          servers.push(d);
+          callback(null);
+        });
+      }, function(err) {
+        next(null);
+      });
+    },
+    function(next) {
+      restserver.listen(RESTPORT, function() {
+        log.info("","REST server running on http://localhost:" + RESTPORT + restURI);
+        next(null);
+      });
+    }
+], function(err, results) {
+  if (err) {
+    log.error("", err.message);
+    process.exit(2);
+  }
+});
 
 restapp.post(restURI, function(req,res) {
   res.status(204).send();
   log.verbose("","Request: " + JSON.stringify(req.body));
   if (req.params.eventname) {
     // find out the demozone
-    var demozone = req.body[0].payload.data.data_demozone.toLowerCase();
-    var namespace = demozone + "," + req.params.eventname;
-    log.verbose("","Sending to %s", namespace);
-    io.sockets.emit(namespace, req.body);
+    var demozone  = req.body[0].payload.data.data_demozone;
+    if (!demozone) {
+      log.error("", "No {payload.data.data_demozone} structure found in payload: " + req.body);
+      return;
+    }
+    var server = _.find(servers, { 'demozone': demozone });
+    if (server) {
+      var namespace = demozone.toLowerCase() + "," + req.params.eventname;
+      log.verbose("","Sending to %s (%d)", namespace, server.port);
+      server.io.sockets.emit(namespace, req.body);
+    } else {
+      log.error("", "Request received for a demozone not registered (" + demozone + ")");
+    }
   }
-});
-
-restserver.listen(RESTPORT, function() {
-  log.info("","REST server running on http://localhost:" + RESTPORT + restURI);
-});
-
-wsserver.listen(WSPORT, function() {
-  log.info("","WS server running on http://localhost:" + WSPORT + wsURI);
 });
