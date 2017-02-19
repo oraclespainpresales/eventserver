@@ -197,7 +197,7 @@ restapp.post(restURI, function(req,res) {
   log.verbose("","Request: " + JSON.stringify(req.body));
   if (req.params.eventname) {
     // find out the demozone
-    var demozone  = req.body[0].payload.data.data_demozone;
+    var demozone  = req.body[0].payload.data.data_demozone.toUpperCase();
     if (!demozone) {
       log.error("", "No {payload.data.data_demozone} structure found in payload: " + req.body);
       return;
