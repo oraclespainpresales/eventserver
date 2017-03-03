@@ -194,7 +194,7 @@ async.series([
 
 restapp.post(restURI, function(req,res) {
   res.status(204).send();
-  log.verbose("","Request: " + JSON.stringify(req.body));
+//  log.verbose("","Request: " + JSON.stringify(req.body));
   if (req.params.eventname) {
     // find out the demozone
     var demozone  = req.body[0].payload.data.data_demozone.toUpperCase();
@@ -206,7 +206,7 @@ restapp.post(restURI, function(req,res) {
     if (server) {
 //      var namespace = demozone.toLowerCase() + "," + req.params.eventname;
       var namespace = req.params.eventname;
-      log.verbose("","Sending to %s (%d)", namespace, server.port);
+      log.verbose("","Sending event to %s (%s, %d)", namespace, demozone, server.port);
       server.io.sockets.emit(namespace, req.body);
     } else {
       log.error("", "Request received for a demozone not registered (" + demozone + ")");
