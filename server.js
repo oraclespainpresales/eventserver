@@ -206,7 +206,7 @@ restapp.post(restURI, function(req,res) {
     if (server) {
 //      var namespace = demozone.toLowerCase() + "," + req.params.eventname;
       var namespace = req.params.eventname;
-      log.verbose("","Sending event to %s (%s, %d)", namespace, demozone, server.port);
+      log.verbose("","Sending %d event(s) to %s (%s, %d)", req.body.length, namespace, demozone, server.port);
       server.io.sockets.emit(namespace, req.body);
     } else {
       log.error("", "Request received for a demozone not registered (" + demozone + ")");
