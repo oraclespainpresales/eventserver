@@ -24,6 +24,7 @@ var restapp     = express()
 // Main code STARTS HERE !!
 // ************************************************************************
 
+log.stream = process.stdout;
 log.timestamp = true;
 
 // Main handlers registration - BEGIN
@@ -116,7 +117,7 @@ log.level = (options.verbose) ? 'verbose' : 'info';
 const pingInterval = options.pinginterval || 25000
     , pingTimeout  = options.pingtimeout  || 60000
     , RESTPORT = 10001
-    , URI = '/apex/pdb1/anki/demozone/zone/'
+    , URI = '/ords/pdb1/anki/demozone/zone/'
 ;
 
 // REST engine initial setup
