@@ -198,11 +198,11 @@ restapp.post(restURI, function(req,res) {
 //  log.verbose("","Request: " + JSON.stringify(req.body));
   if (req.params.eventname) {
     // find out the demozone
-    var demozone  = req.body[0].payload.data.data_demozone.toUpperCase();
-    if (!demozone) {
+    if (!req.body[0].payload.data.data_demozone) {
       log.error("", "No {payload.data.data_demozone} structure found in payload: " + JSON.stringify(req.body));
       return;
     }
+    var demozone  = req.body[0].payload.data.data_demozone.toUpperCase();
     var server = _.find(servers, { 'demozone': demozone });
     if (server) {
 //      var namespace = demozone.toLowerCase() + "," + req.params.eventname;
