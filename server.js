@@ -11,6 +11,7 @@ var restify = require('restify')
   , log = require('npmlog-ts')
   , commandLineArgs = require('command-line-args')
   , getUsage = require('command-line-usage')
+  , cors = require('cors')
 ;
 
 // Instantiate classes & servers
@@ -123,6 +124,7 @@ const pingInterval = options.pinginterval || 25000
 // REST engine initial setup
 restapp.use(bodyParser.urlencoded({ extended: true }));
 restapp.use(bodyParser.json());
+restapp.use(cors());
 
 var client = restify.createJsonClient({
   url: 'https://' + options.dbhost,
