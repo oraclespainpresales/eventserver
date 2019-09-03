@@ -226,6 +226,7 @@ restapp.post(restURI, function(req,res) {
       var namespace = req.params.eventname;
       log.verbose("","Sending %d event(s) to %s (%s, %d)", req.body.length, namespace, demozone, server.port);
       server.io.sockets.emit(namespace, req.body);
+      server.ioSSL.sockets.emit(namespace, req.body);
     } else {
       log.error("", "Request received for a demozone not registered (" + demozone + ")");
     }
