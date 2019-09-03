@@ -5,6 +5,7 @@ var restify = require('restify')
   , queue = require('block-queue')
   , express = require('express')
   , http = require('http')
+  , https = require('https')
   , bodyParser = require('body-parser')
   , async = require('async')
   , _ = require('lodash')
@@ -15,10 +16,10 @@ var restify = require('restify')
 ;
 
 // Instantiate classes & servers
-const wsURI     = '/socket.io'
-    , restURI   = '/event/:eventname';
-var restapp     = express()
-  , restserver  = http.createServer(restapp)
+const wsURI       = '/socket.io'
+    , restURI     = '/event/:eventname';
+var restapp       = express()
+  , restserver    = http.createServer(restapp)
 ;
 
 // ************************************************************************
@@ -27,6 +28,11 @@ var restapp     = express()
 
 log.stream = process.stdout;
 log.timestamp = true;
+
+const optionsSSL = {
+  cert: fs.readFileSync("/u01/ssl/certificate.fullchain.crt").toString(),
+  key: fs.readFileSync("/u01/ssl/certificate.key").toString()
+};
 
 // Main handlers registration - BEGIN
 // Main error handler
@@ -156,12 +162,15 @@ async.series([
         var d = {
           demozone: demozone.id,
           name: demozone.name,
-          port: (demozone.proxyport % 100) + 10000
+          port: (demozone.proxyport % 100) + 10000,
+          portSSL: (demozone.proxyport % 100) + 11100
         };
         d.app = express();
         d.server = http.createServer(d.app);
+        d.serverSSL = https.createServer(optionsSSL, d.app);
         d.io = require('socket.io')(d.server, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
-        d.io.on('connection', function (socket) {
+        d.ioSSL = require('socket.io')(d.serverSSL, {'pingInterval': pingInterval, 'pingTimeout': pingTimeout});
+        const f_connection = function (socket) {
           log.info(d.name,"Connected!!");
           socket.conn.on('heartbeat', function() {
             log.verbose(d.name,'heartbeat');
@@ -172,11 +181,16 @@ async.series([
           socket.on('error', function (err) {
             log.error(d.name,"Error: " + err);
           });
-        });
+        };
+        d.io.on('connection', f_connection);
+        d.ioSSL.on('connection', f_connection);
         d.server.listen(d.port, function() {
           log.info("","Created WS server for demozone '" + d.name + "' at port: " + d.port);
-          servers.push(d);
-          callback(null);
+          d.serverSSL.listen(d.portSSL, function() {
+            log.info("","Created WSS server for demozone '" + d.name + "' at port: " + d.portSSL);
+            servers.push(d);
+            callback(null);  
+          });
         });
       }, function(err) {
         next(null);
